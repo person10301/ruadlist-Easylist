@@ -1,9 +1,9 @@
-name: Обновить ruadlist + EasyList
+name: Update ruadlist + EasyList
 
 on:
-  workflow_dispatch:
   schedule:
-    - cron: '0 3 * * *'
+    - cron: '0 4 * * *'      # каждый день в ~4:00 UTC (через час после типичного обновления списка)
+  workflow_dispatch:         # ручной запуск
 
 jobs:
   update:
@@ -13,15 +13,21 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Скачать свежий список фильтров
+      - name: Download the current list of filters
         run: |
           curl -L -o ruadlist+easylist.txt https://easylist-downloads.adblockplus.org/ruadlist+easylist.txt
-          echo "Файл скачан, размер: $(wc -c < ruadlist+easylist.txt) байт"
+          echo "Скачано. Размер файла: $(wc -c < ruadlist+easylist.txt) байт (~$(wc -c < ruadlist+easylist.txt | awk '{print $1/1024/1024}') МБ)"
 
-      - name: Commit and push (всегда)
+      - name: Review changes and commit
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add ruadlist+easylist.txt
-          git commit -m "Автообновление: ruadlist + easylist.txt ($(date -u +'%Y-%m-%d %H:%M UTC'))" || echo "Нет изменений для коммита"
-          git push
+          
+          if git diff --quiet ruadlist+easylist.txt; then
+            echo "✅ The file has not changed - no commit needed"
+          else
+            git add ruadlist+easylist.txt
+            git commit -m "Автообновление: ruadlist + easylist.txt ($(date -u +'%Y-%m-%d %H:%M UTC'))"
+            git push
+            echo "✅ The file has been updated and committed"
+          fi
